@@ -16,9 +16,8 @@ Create a table named students.
 Defines student attributes, such as:
 id (Primary Key): A unique identifier for each student.
 name: The name of the student.
-student_id: A unique student identifier.
 email: The email address of the student.
-date_of_birth.
+age: The student's age.
 
 ### Courses Table:
 
@@ -34,6 +33,7 @@ end_date: The end date of the course.
 Defines performance-related attributes, such as:
 id (Primary Key): A unique identifier for each performance record.
 student_id (Foreign Key): A reference to the student who earned the performance record.
+student_name: The name of the student.
 course_code (Foreign Key): A reference to the course for which the performance record is recorded.
 grade: The grade or score achieved by the student in the course.
 attendance: The average student attendance.
