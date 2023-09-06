@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date, Float
+from datetime import datetime
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, Date, Float
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
@@ -11,6 +12,7 @@ class Student(Base):
     student_name = Column(String(255), nullable=False)
     student_email = Column(String(255), nullable=False, unique=True)
     age = Column(Integer)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
     # Define a relationship to performance records (one-to-many)
     performance_records = relationship('PerformanceRecord', back_populates='student')
