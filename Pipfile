@@ -5,10 +5,12 @@ name = "pypi"
 
 [packages]
 sqlalchemy = "*"
+fire = "*"
 
 [dev-packages]
 click = "*"
 alembic = "*"
+fire = "*"
 
 [requires]
 python_version = "3.10"
