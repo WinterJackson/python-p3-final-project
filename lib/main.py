@@ -18,15 +18,15 @@ class StudentManagementSystem:
     def __init__(self):
         self.session = session  
 
-    def add_student(self, name, student_id, email, age):
+    def add_student(self, name, email, age):
         """Add a new student to the database."""
         # Create a new Student object and add it to the session
-        new_student = Student(name=name, student_id=student_id, email=email, age=age)
+        new_student = Student(student_name=name, student_email=email, age=age)
         self.session.add(new_student)
         
         # Commit the changes to the database
         self.session.commit()
-        print(f"Added student: {name} (ID: {student_id}, Email: {email}, Age: {age})")
+        print(f"Added student: {name} (ID: {new_student.id}, Email: {email}, Age: {age})")
 
     def add_course(self, course_name, course_code, instructor, start_date, end_date):
         """Add a new course to the database."""
@@ -44,14 +44,14 @@ class StudentManagementSystem:
         self.session.commit()
         print(f"Added course: {course_name} (Code: {course_code}, Instructor: {instructor}, Start Date: {start_date}, End Date: {end_date}))")
 
-    def add_performance_record(self, student_id, course_code, grade):
+    def add_performance_record(self, id, course_code, grade):
         """Add a performance record for a student in a course."""
         # Retrieve the student and course based on student_id and course_code
-        student = self.session.query(Student).filter_by(student_id=student_id).first()
+        student = self.session.query(Student).filter_by(id=id).first()
         course = self.session.query(Course).filter_by(course_code=course_code).first()
         
         if student is None:
-            print(f"Student with ID {student_id} not found.")
+            print(f"Student with ID {id} not found.")
             return
         
         if course is None:
@@ -64,21 +64,70 @@ class StudentManagementSystem:
         
         # Commit the changes to the database
         self.session.commit()
-        print(f"Added performance record: Student ID: {student_id}, Course Code: {course_code}, Grade: {grade}")
+        print(f"Added performance record: Student ID: {id}, Course Code: {course_code}, Grade: {grade}")
 
-    def get_student_info(self, student_id):
-        """Retrieve and display detailed student information."""
-        # Retrieve the student based on student_id
-        student = self.session.query(Student).filter_by(student_id=student_id).first()
+    def update_student(self, id, new_name):
+        """Update student information."""
+        student = self.session.query(Student).filter_by(id=id).first()
 
         if student is None:
-            print(f"Student with ID {student_id} not found.")
+            print(f"Student with ID {id} not found.")
             return
 
-        print(f"Student Information:\nName: {student.name}\nStudent ID: {student.student_id}\nEmail: {student.email}\nAge: {student.age}\n")
+        student.student_name = new_name
+        self.session.commit()
+        print(f"Updated student information: Student ID: {id}, New Name: {new_name}")
+
+    def update_course(self, course_code, new_course_name, new_course_code):
+        """Update course information."""
+        course = self.session.query(Course).filter_by(course_code=course_code).first()
+
+        if course is None:
+            print(f"Course with code {course_code} not found.")
+            return
+
+        course.course_name = new_course_name
+        course.course_code = new_course_code
+        self.session.commit()
+        print(f"Updated course information: Course Code: {new_course_code}, New Course Name: {new_course_name}")
+
+    def delete_student(self, id):
+        """Delete a student."""
+        student = self.session.query(Student).filter_by(id=id).first()
+
+        if student is None:
+            print(f"Student with ID {id} not found.")
+            return
+
+        self.session.delete(student)
+        self.session.commit()
+        print(f"Deleted student: Student ID: {id}")
+
+    def delete_course(self, course_code):
+        """Delete a course."""
+        course = self.session.query(Course).filter_by(course_code=course_code).first()
+
+        if course is None:
+            print(f"Course with code {course_code} not found.")
+            return
+
+        self.session.delete(course)
+        self.session.commit()
+        print(f"Deleted course: Course Code: {course_code}")
+
+    def get_student_info(self, id):
+        """Retrieve and display detailed student information."""
+        # Retrieve the student based on student_id
+        student = self.session.query(Student).filter_by(id=id).first()
+
+        if student is None:
+            print(f"Student with ID {id} not found.")
+            return
+
+        print(f"Student Information:\nName: {student.name}\nStudent ID: {student.id}\nEmail: {student.email}\nAge: {student.age}\n")
 
         # Retrieve the performance records for the student, including course information
-        performance_records = self.session.query(PerformanceRecord).filter_by(student_id=student_id).all()
+        performance_records = self.session.query(PerformanceRecord).filter_by(student_id=id).all()
 
         if not performance_records:
             print("No performance records found for this student.")
@@ -110,7 +159,7 @@ class StudentManagementSystem:
         else:
             print("Enrolled Students:")
             for student in enrolled_students:
-                print(f"Student ID: {student.student_id}, Name: {student.name}")
+                print(f"Student ID: {student.id}, Name: {student.name}")
 
     def get_performance_records(self, course_code):
         """Retrieve and display performance records, including attendance, for every student enrolled in the specified course_code."""
@@ -132,7 +181,7 @@ class StudentManagementSystem:
             for record in performance_records:
                 student = record.student
                 print(f"Student Name: {student.name}")
-                print(f"Student ID: {student.student_id}, Name: {student.name}")
+                print(f"Student ID: {student.id}, Name: {student.name}")
 
                 # Check if attendance information is available for this record
                 if hasattr(record, 'attendance'):
