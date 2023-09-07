@@ -34,12 +34,35 @@ class PerformanceRecord(Base):
     __tablename__ = 'performance_records'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    student_name = Column(String(255))  
     student_id = Column(Integer, ForeignKey('students.id'), nullable=False)
     course_id = Column(Integer, ForeignKey('courses.id'), nullable=False)
-    grade = Column(String(2))  
-    attendance = Column(Float) 
+    num_days_present = Column(Integer)
+    attendance = Column(Float)
+    grade = Column(String(2))
 
     # Define relationships to students and courses (many-to-one)
     student = relationship('Student', back_populates='performance_records')
     course = relationship('Course', back_populates='performance_records')
+
+    def calculate_attendance(self):
+        if self.num_days_present is not None and self.course is not None:
+            start_date = self.course.start_date
+            end_date = self.course.end_date
+
+            # Calculate the number of days between start_date and end_date (inclusive)
+            total_days = (end_date - start_date).days + 1
+
+            # Calculate attendance percentage
+            if total_days > 0:
+                self.attendance = (self.num_days_present / total_days) * 100
+            else:
+                self.attendance = 0  
+
+    @property
+    def num_days_present(self):
+        return self._num_days_present
+
+    @num_days_present.setter
+    def num_days_present(self, value):
+        self._num_days_present = value
+        self.calculate_attendance()
