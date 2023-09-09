@@ -3,7 +3,8 @@ import fire
 from datetime import datetime 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from .models import Base, Student, Course, PerformanceRecord
+from sqlalchemy import desc
+from .models import Base, Student, Course, PerformanceRecord, Enrollment
 
 # Define the database URL
 database_url = 'sqlite:///student_management.db'
@@ -144,89 +145,77 @@ class StudentManagementSystem:
 
         return student_info
 
-    def get_course_info(self, course_code: str):
-        """Retrieve and return course information, including enrolled students, as a string."""
-        # Retrieve the course based on course_code
+    def get_course_info(self, course_code):
+        """
+        Get course information based on course code.
+        
+        Args:
+            course_code (str): The code of the course to retrieve.
+        
+        Returns:
+            str: A formatted string with course information.
+        """
         course = self.session.query(Course).filter_by(course_code=course_code).first()
 
         if course is None:
             return f"Course with code {course_code} is not found."
 
-        course_info = f"Course Information:\n"
-        course_info += f"Course Name: {course.course_name}\n"
-        course_info += f"Course Code: {course.course_code}\n"
-        course_info += f"Instructor: {course.instructor}\n"
-        course_info += f"Start Date: {course.start_date}\n"
-        course_info += f"End Date: {course.end_date}\n"
-
-        # Retrieve the students enrolled in this course
-        enrolled_students = [record.student for record in course.performance_records]
-
-        if not enrolled_students:
-            course_info += "No students enrolled in this course."
-        else:
-            course_info += "Enrolled Students:\n"
-            for student in enrolled_students:
-                course_info += f"Student ID: {student.id}, Name: {student.student_name}\n"
-
+        # Format and return course information
+        course_info = (
+            f"Course Name: {course.course_name}\n"
+            f"Course Code: {course.course_code}\n"
+            f"Instructor: {course.instructor}\n"
+            f"Start Date: {course.start_date}\n"
+            f"End Date: {course.end_date}\n"
+        )
         return course_info
 
-    def get_performance_records(self, course_code: str):
-        """Retrieve and display performance records, including attendance, for every student enrolled in the specified course_code."""
-        # Retrieve the course based on course_code
+    def get_performance_records(self, course_code):
+        # Query the course by its course_code
         course = self.session.query(Course).filter_by(course_code=course_code).first()
 
-        if course is None:
-            print(f"Course with code {course_code} is not found.")
-            return
-
-        print(f"Performance Records for Course {course.course_name} (Code: {course.course_code}):\n")
-
-        # Retrieve the performance records for all students in this course
-        performance_records = course.performance_records
-
-        if not performance_records:
-            print("No performance records found for this course.")
-        else:
-            for record in performance_records:
-                student = record.student
-                print(f"Student Name: {student.student_name}")
-                print(f"Student ID: {student.id}, Name: {student.student_name}")
-
-                # Check if attendance information is available for this record
-                if hasattr(record, 'attendance'):
-                    print(f"Attendance: {record.attendance}")
-                    print(f"Number of Days Present: {record.num_days_present}")
-                print(f"Grade: {record.grade}")
-                print("-" * 40)  # Separator between students
-
-    def rank_students(self, course_code: str):
-        """Return students' performance ranked by grades for a specific course as a string."""
-        # Retrieve the course based on course_code
-        course = self.session.query(Course).filter_by(course_code=course_code).first()
-
-        if course is None:
+        if not course:
             return f"Course with code {course_code} is not found."
 
-        ranking_info = f"Ranking for Course {course.course_name} (Code: {course.course_code}):\n"
+        # Query the performance records for the course, including student names and IDs
+        records = self.session.query(PerformanceRecord, Student).\
+            join(Student).filter(PerformanceRecord.course_id == course.id).all()
 
-        # Retrieve the performance records for all students in this course
-        performance_records = course.performance_records
+        # Prepare the results as a list of dictionaries
+        performance_data = []
+        for record, student in records:
+            performance_data.append({
+                "student_id": student.id,
+                "student_name": student.student_name,
+                "attendance": record.attendance,  
+                "grade": record.grade
+            })
 
-        if not performance_records:
-            return "No performance records found for this course."
+        return performance_data
 
-        # Sort students by grades in descending order
-        sorted_records = sorted(performance_records, key=lambda record: record.grade, reverse=True)
+    def rank_students(self, course_code):
+        """
+        Rank students in descending order based on their grade in a specific course.
+        Args:
+            course_code (str): The course code for which to rank students.
+        Returns:
+            list or str: A list of tuples containing (student_name, grade) in descending order
+                            or an error message if the course code is not found.
+        """
+        # Check if the course code exists in the database
+        course = self.session.query(Course).filter_by(course_code=course_code).first()
+        if not course:
+            return f"Course with code {course_code} is not found."
 
-        for rank, record in enumerate(sorted_records, start=1):
-            student = record.student
-            ranking_info += f"Rank: {rank}\n"
-            ranking_info += f"Student Name: {student.student_name}\n"
-            ranking_info += f"Grade: {record.grade}\n"
-            ranking_info += "-" * 40 + "\n"
+        # Query the database to get the ranked students
+        ranked_students = self.session.query(Student.student_name, PerformanceRecord.grade)\
+            .join(PerformanceRecord, Student.id == PerformanceRecord.student_id)\
+            .join(Course, PerformanceRecord.course_id == Course.id)\
+            .filter(Course.course_code == course_code)\
+            .order_by(desc(PerformanceRecord.grade))\
+            .all()
 
-        return ranking_info
+        return ranked_students
 
 
 if __name__ == "__main__":

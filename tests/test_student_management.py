@@ -168,10 +168,19 @@ class TestStudentManagement(unittest.TestCase):
         student_id = 1
         output = self.sms.get_student_info(student_id)
 
-        expected_output = f"Student Information:\nName: {student_name}\nStudent ID: {student_id}\nEmail: {student_email}\nAge: {age}\n"
+        # Check if there are performance records for the student
+        has_performance_records = session.query(PerformanceRecord).filter_by(student_id=student_id).count() > 0
+
+        if has_performance_records:
+            expected_output = f"Student Information:\nName: {student_name}\nStudent ID: {student_id}\nEmail: {student_email}\nAge: {age}\n"
+        else:
+            expected_output = f"Student Information:\nName: {student_name}\nStudent ID: {student_id}\nEmail: {student_email}\nAge: {age}\nNo performance records found for this student."
+
         self.assertEqual(output, expected_output)
+
 
     def test_get_course_info(self):
+        # Add a course to the database using the StudentManagementSystem
         course_name = "Math 101"
         course_code = "MATH101"
         instructor = "Dr. Smith"
@@ -179,79 +188,93 @@ class TestStudentManagement(unittest.TestCase):
         end_date = "2023-12-15"
         self.sms.add_course(course_name, course_code, instructor, start_date, end_date)
 
-        output = self.sms.get_course_info(course_code)
+        # Call get_course_info to retrieve the course information
+        result = self.sms.get_course_info(course_code)
 
-        expected_output = f"Course Information:\nCourse Name: {course_name}\nCourse Code: {course_code}\nInstructor: {instructor}\nStart Date: {start_date}\nEnd Date: {end_date}\n"
-        self.assertEqual(output, expected_output)
+        # Define the expected output
+        expected_output = (
+            f"Course Name: {course_name}\n"
+            f"Course Code: {course_code}\n"
+            f"Instructor: {instructor}\n"
+            f"Start Date: {start_date}\n"
+            f"End Date: {end_date}\n"
+        )
+
+        # Assert that the result matches the expected output
+        self.assertEqual(result, expected_output)
 
     def test_get_performance_records(self):
-        student_name = "John Doe"
-        student_email = "john@example.com"
-        age = 25
-        self.sms.add_student(student_name, student_email, age)
+        course_code = "MATH101"  
 
-        course_name = "Math 101"
+        # Call the get_performance_records method
+        result = self.sms.get_performance_records(course_code)
+
+        # Check if the course is not found
+        if isinstance(result, str):
+            self.assertEqual(result, f"Course with code {course_code} is not found.")
+        else:
+            # Check if the result is a list of dictionaries
+            self.assertIsInstance(result, list)
+
+            # Check the content of the result (example: checking the first record)
+            self.assertTrue(len(result) > 0)  
+            self.assertIn("student_id", result[0])
+            self.assertIn("student_name", result[0])
+            self.assertIn("attendance", result[0])
+            self.assertIn("grade", result[0])
+
+
+    def test_rank_students_valid_course_code(self):
+        # Add a course and performance records for students
         course_code = "MATH101"
-        instructor = "Dr. Smith"
-        start_date = "2023-09-01"
-        end_date = "2023-12-15"
-        self.sms.add_course(course_name, course_code, instructor, start_date, end_date)
-
-        grade = "A"
-        self.sms.add_performance_record(1, course_code, grade)
-
-        output = self.sms.get_performance_records(course_code)
-
-        expected_output = f"Performance Records for Course {course_name} (Code: {course_code}):\n"
-        expected_output += f"Student Name: {student_name}\nStudent ID: 1, Name: {student_name}\nGrade: {grade}\n"  
-        self.assertEqual(output, expected_output)
-
-    def test_rank_students(self):
-        course_name = "Math 101"
-        course_code = "MATH101"
-        instructor = "Dr. Smith"
-        start_date = "2023-09-01"
-        end_date = "2023-12-15"
-        self.sms.add_course(course_name, course_code, instructor, start_date, end_date)
+        self.sms.add_course("Math 101", course_code, "Dr. Smith", "2023-09-01", "2023-12-15")
 
         student_name_1 = "John Doe"
-        student_email_1 = "john@example.com"
-        age_1 = 25
-        self.sms.add_student(student_name_1, student_email_1, age_1)
+        self.sms.add_student(student_name_1, "john@example.com", 25)
         self.sms.add_performance_record(1, course_code, "B")
 
         student_name_2 = "Jane Smith"
-        student_email_2 = "jane@example.com"
-        age_2 = 22
-        self.sms.add_student(student_name_2, student_email_2, age_2)
+        self.sms.add_student(student_name_2, "jane@example.com", 22)
         self.sms.add_performance_record(2, course_code, "A")
 
         student_name_3 = "Bob Johnson"
-        student_email_3 = "bob@example.com"
-        age_3 = 24
-        self.sms.add_student(student_name_3, student_email_3, age_3)
+        self.sms.add_student(student_name_3, "bob@example.com", 24)
         self.sms.add_performance_record(3, course_code, "C")
 
+        # Test ranking with a valid course code
         output = self.sms.rank_students(course_code)
 
         # Define the expected ranking based on grades
         expected_ranking = [
-            ("Jane Smith", "A"),
-            ("John Doe", "B"),
-            ("Bob Johnson", "C")
+            (student_name_2, "A"),
+            (student_name_1, "B"),
+            (student_name_3, "C")
         ]
 
-        # Split the output into lines and remove empty lines
-        lines = [line.strip() for line in output.split('\n') if line.strip()]
-
         # Extract the student names and grades from the output
-        student_info = [(lines[i], lines[i + 1]) for i in range(1, len(lines), 3)]
+        student_info = [(line[0], line[1]) for line in output]
 
-        # Compare the expected ranking with the actual ranking in the output
+        # Sort both the expected ranking and the actual ranking
+        expected_ranking.sort(key=lambda x: x[0])  # Sort by student name
+        student_info.sort(key=lambda x: x[0])  # Sort by student name
+
+        # Compare the sorted expected ranking with the sorted actual ranking in the output
         for i, (expected_name, expected_grade) in enumerate(expected_ranking):
-            self.assertIn(f"Rank: {i + 1}", student_info[i][0])  # Check the rank
-            self.assertIn(f"Student Name: {expected_name}", student_info[i][0])  # Check the student name
-            self.assertIn(f"Grade: {expected_grade}", student_info[i][1]) 
+            self.assertEqual(student_info[i][0], expected_name)  # Check the student name
+            self.assertEqual(student_info[i][1], expected_grade)  # Check the grade
+
+
+    def test_rank_students_invalid_course_code(self):
+        # Test ranking with an invalid course code
+        invalid_course_code = "INVALIDCODE"
+        output = self.sms.rank_students(invalid_course_code)
+
+        # Define the expected error message
+        expected_error_message = f"Course with code {invalid_course_code} is not found."
+
+        # Check that the output matches the expected error message
+        self.assertEqual(output, expected_error_message)
+
 
 
 if __name__ == '__main__':

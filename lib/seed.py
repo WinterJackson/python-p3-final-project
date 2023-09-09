@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Student, Course, PerformanceRecord  # Adjust the import path as needed
+from .models import Student, Course, PerformanceRecord  # Adjust the import path as needed
 from datetime import datetime
 
 

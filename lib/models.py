@@ -16,6 +16,8 @@ class Student(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     performance_records = relationship('PerformanceRecord', back_populates='student')
+    courses = relationship('Course', secondary='enrollments', back_populates='students')
+
 
 class Course(Base):
     __tablename__ = 'courses'
@@ -28,6 +30,14 @@ class Course(Base):
     end_date = Column(Date)
 
     performance_records = relationship('PerformanceRecord', back_populates='course')
+    students = relationship('Student', secondary='enrollments', back_populates='courses')
+
+class Enrollment(Base):
+    __tablename__ = 'enrollments'
+
+    student_id = Column(Integer, ForeignKey('students.id'), primary_key=True)
+    course_id = Column(Integer, ForeignKey('courses.id'), primary_key=True)
+    _num_days_present = Column(Integer)
 
 class PerformanceRecord(Base):
     __tablename__ = 'performance_records'
