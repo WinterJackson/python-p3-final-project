@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
+from sqlalchemy.orm import joinedload
 from .models import Base, Student, Course, PerformanceRecord, Enrollment
 
 # Define the database URL
@@ -119,29 +120,35 @@ class StudentManagementSystem:
         self.session.commit()
         print(f"Deleted course: Course Code: {course_code}")
 
-    def get_student_info(self, id):
-        """Retrieve and return detailed student information as a string."""
-        # Retrieve the student based on student_id
-        student = self.session.query(Student).filter_by(id=id).first()
+    def get_student_info(self, student_id):
+        # Query the database to get the student by ID
+        student = self.session.query(Student).filter_by(id=student_id).first()
 
         if student is None:
-            return f"Student with ID {id} not found."
+            return f"Student with ID {student_id} not found."
 
-        student_info = f"Student Information:\nName: {student.student_name}\nStudent ID: {student.id}\nEmail: {student.student_email}\nAge: {student.age}\n"
+        # Fetch the student's courses and grades using a join
+        student_courses = (
+            self.session.query(Course, PerformanceRecord)
+            .filter(PerformanceRecord.student_id == student.id)
+            .join(Course, Course.id == PerformanceRecord.course_id)
+            .all()
+        )
 
-        # Retrieve the performance records for the student, including course information
-        performance_records = self.session.query(PerformanceRecord).filter_by(student_id=id).all()
+        # Format the result with student information
+        student_info = (
+            f"Student Information:\n"
+            f"Name: {student.student_name}\n"
+            f"Student ID: {student.id}\n"
+            f"Email: {student.student_email}\n"
+            f"Age: {student.age}\n"
+        )
 
-        if not performance_records:
-            return "No performance records found for this student."
-        else:
-            student_info += "Courses and Grades:\n"
-            for record in performance_records:
-                course = record.course
-                student_info += f"Course: {course.course_name} (Code: {course.course_code})\n"
-                student_info += f"Grade: {record.grade}\n"
-                student_info += f"Attendance: {record.attendance}\n"
-                student_info += "-" * 40 + "\n"  # Separator between courses
+        # Check if the student has enrolled in any courses
+        if student_courses:
+            student_info += "Courses Enrolled:\n"
+            for course, grade in student_courses:
+                student_info += f"- {course.course_name} (Code: {course.course_code}), Grade: {grade.grade}\n"
 
         return student_info
 
@@ -217,13 +224,6 @@ class StudentManagementSystem:
 
         return ranked_students
 
-
 if __name__ == "__main__":
     sms = StudentManagementSystem()
-    # sms.add_student("Abdul Abdala", "abdulabdala@example.com", 18)
-    # sms.add_student("Keith Kimani", "keithkimani@example.com", 19)
-    # sms.add_student("Brian Wetu", "brianwetu@example.com", 20)
-    # sms.add_student("Wendy Wafula", "wendywafula@example.com", 21)
-    # sms.add_student("Jojo Kantai", "jojokantai@example.com", 22)
-
     fire.Fire(sms)

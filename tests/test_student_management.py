@@ -168,15 +168,22 @@ class TestStudentManagement(unittest.TestCase):
         student_id = 1
         output = self.sms.get_student_info(student_id)
 
-        # Check if there are performance records for the student
-        has_performance_records = session.query(PerformanceRecord).filter_by(student_id=student_id).count() > 0
-
-        if has_performance_records:
-            expected_output = f"Student Information:\nName: {student_name}\nStudent ID: {student_id}\nEmail: {student_email}\nAge: {age}\n"
-        else:
-            expected_output = f"Student Information:\nName: {student_name}\nStudent ID: {student_id}\nEmail: {student_email}\nAge: {age}\nNo performance records found for this student."
+        expected_output = (
+            f"Student Information:\n"
+            f"Name: {student_name}\n"
+            f"Student ID: {student_id}\n"
+            f"Email: {student_email}\n"
+            f"Age: {age}\n"
+        )
 
         self.assertEqual(output, expected_output)
+
+        # Test for a non-existent student
+        non_existent_student_id = 999
+        non_existent_output = self.sms.get_student_info(non_existent_student_id)
+
+        expected_non_existent_output = f"Student with ID {non_existent_student_id} not found."
+        self.assertEqual(non_existent_output, expected_non_existent_output)
 
 
     def test_get_course_info(self):
